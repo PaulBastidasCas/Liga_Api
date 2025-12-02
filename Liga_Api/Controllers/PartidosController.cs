@@ -23,33 +23,84 @@ namespace Liga_Api.Controllers
 
         // GET: api/Partidos
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Partido>>> GetPartido()
+        public async Task<ActionResult<ApiResult<List<Partido>>>> GetPartidos()
         {
-            return await _context.Partidos.ToListAsync();
+            try
+            {
+                var partidos = await _context.Partidos
+                    .Include(p => p.Torneo)         
+                    .Include(p => p.EquipoLocal)     
+                    .Include(p => p.EquipoVisitante) 
+                    .ToListAsync();
+
+                return ApiResult<List<Partido>>.Ok(partidos);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<Partido>>.Fail(ex.Message);
+            }
         }
 
         // GET: api/Partidos/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Partido>> GetPartido(int id)
+        public async Task<ActionResult<ApiResult<Partido>>> GetPartido(int id)
         {
-            var partido = await _context.Partidos.FindAsync(id);
-
-            if (partido == null)
+            try
             {
-                return NotFound();
-            }
+                var partido = await _context.Partidos
+                    .Include(p => p.Torneo)
+                    .Include(p => p.EquipoLocal)
+                    .Include(p => p.EquipoVisitante)
+                    .FirstOrDefaultAsync(m => m.Id == id);
 
-            return partido;
+                if (partido == null)
+                {
+                    return ApiResult<Partido>.Fail("Partido no encontrado");
+                }
+
+                return ApiResult<Partido>.Ok(partido);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<Partido>.Fail(ex.Message);
+            }
+        }
+
+        // POST: api/Partidos
+        [HttpPost]
+        public async Task<ActionResult<ApiResult<Partido>>> PostPartido(Partido partido)
+        {
+            try
+            {
+                if (partido.EquipoLocalId == partido.EquipoVisitanteId)
+                {
+                    return BadRequest(ApiResult<Partido>.Fail("El equipo local y visitante no pueden ser el mismo"));
+                }
+
+                _context.Partidos.Add(partido);
+                await _context.SaveChangesAsync();
+
+                var partidoCompleto = await _context.Partidos
+                    .Include(p => p.Torneo)
+                    .Include(p => p.EquipoLocal)
+                    .Include(p => p.EquipoVisitante)
+                    .FirstOrDefaultAsync(p => p.Id == partido.Id);
+
+                return CreatedAtAction("GetPartido", new { id = partido.Id }, ApiResult<Partido>.Ok(partidoCompleto));
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<Partido>.Fail(ex.Message);
+            }
         }
 
         // PUT: api/Partidos/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutPartido(int id, Partido partido)
+        public async Task<ActionResult<ApiResult<Partido>>> PutPartido(int id, Partido partido)
         {
             if (id != partido.Id)
             {
-                return BadRequest();
+                return ApiResult<Partido>.Fail("El ID de la URL no coincide con el cuerpo");
             }
 
             _context.Entry(partido).State = EntityState.Modified;
@@ -57,47 +108,46 @@ namespace Liga_Api.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                return ApiResult<Partido>.Ok(null);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException ex)
             {
                 if (!PartidoExists(id))
                 {
-                    return NotFound();
+                    return ApiResult<Partido>.Fail("Partido no encontrado");
                 }
                 else
                 {
-                    throw;
+                    return ApiResult<Partido>.Fail(ex.Message);
                 }
             }
-
-            return NoContent();
-        }
-
-        // POST: api/Partidos
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<Partido>> PostPartido(Partido partido)
-        {
-            _context.Partidos.Add(partido);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetPartido", new { id = partido.Id }, partido);
+            catch (Exception ex)
+            {
+                return ApiResult<Partido>.Fail(ex.Message);
+            }
         }
 
         // DELETE: api/Partidos/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeletePartido(int id)
+        public async Task<ActionResult<ApiResult<object>>> DeletePartido(int id)
         {
-            var partido = await _context.Partidos.FindAsync(id);
-            if (partido == null)
+            try
             {
-                return NotFound();
+                var partido = await _context.Partidos.FindAsync(id);
+                if (partido == null)
+                {
+                    return ApiResult<object>.Fail("Partido no encontrado");
+                }
+
+                _context.Partidos.Remove(partido);
+                await _context.SaveChangesAsync();
+
+                return ApiResult<object>.Ok(null);
             }
-
-            _context.Partidos.Remove(partido);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return ApiResult<object>.Fail(ex.Message);
+            }
         }
 
         private bool PartidoExists(int id)

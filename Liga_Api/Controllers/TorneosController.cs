@@ -23,33 +23,76 @@ namespace Liga_Api.Controllers
 
         // GET: api/Torneos
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Torneo>>> GetTorneo()
+        public async Task<ActionResult<ApiResult<List<Torneo>>>> GetTorneos()
         {
-            return await _context.Torneos.ToListAsync();
+            try
+            {
+                var torneos = await _context.Torneos
+                    .Include(t => t.Inscripciones)
+                    .ToListAsync();
+
+                return ApiResult<List<Torneo>>.Ok(torneos);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<Torneo>>.Fail(ex.Message);
+            }
         }
 
         // GET: api/Torneos/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Torneo>> GetTorneo(int id)
+        public async Task<ActionResult<ApiResult<Torneo>>> GetTorneo(int id)
         {
-            var torneo = await _context.Torneos.FindAsync(id);
-
-            if (torneo == null)
+            try
             {
-                return NotFound();
-            }
+                var torneo = await _context.Torneos
+                    .Include(t => t.Inscripciones)
+                        .ThenInclude(i => i.Equipo) 
+                    .Include(t => t.Partidos)       
+                    .FirstOrDefaultAsync(m => m.Id == id);
 
-            return torneo;
+                if (torneo == null)
+                {
+                    return ApiResult<Torneo>.Fail("Torneo no encontrado");
+                }
+
+                return ApiResult<Torneo>.Ok(torneo);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<Torneo>.Fail(ex.Message);
+            }
+        }
+
+        // POST: api/Torneos
+        [HttpPost]
+        public async Task<ActionResult<ApiResult<Torneo>>> PostTorneo(Torneo torneo)
+        {
+            try
+            {
+                if (torneo.FechaFin < torneo.FechaInicio)
+                {
+                    return BadRequest(ApiResult<Torneo>.Fail("La fecha de fin no puede ser anterior a la de inicio"));
+                }
+
+                _context.Torneos.Add(torneo);
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction("GetTorneo", new { id = torneo.Id }, ApiResult<Torneo>.Ok(torneo));
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<Torneo>.Fail(ex.Message);
+            }
         }
 
         // PUT: api/Torneos/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutTorneo(int id, Torneo torneo)
+        public async Task<ActionResult<ApiResult<Torneo>>> PutTorneo(int id, Torneo torneo)
         {
             if (id != torneo.Id)
             {
-                return BadRequest();
+                return ApiResult<Torneo>.Fail("El ID de la URL no coincide con el cuerpo");
             }
 
             _context.Entry(torneo).State = EntityState.Modified;
@@ -57,47 +100,46 @@ namespace Liga_Api.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                return ApiResult<Torneo>.Ok(null);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException ex)
             {
                 if (!TorneoExists(id))
                 {
-                    return NotFound();
+                    return ApiResult<Torneo>.Fail("Torneo no encontrado");
                 }
                 else
                 {
-                    throw;
+                    return ApiResult<Torneo>.Fail(ex.Message);
                 }
             }
-
-            return NoContent();
-        }
-
-        // POST: api/Torneos
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<Torneo>> PostTorneo(Torneo torneo)
-        {
-            _context.Torneos.Add(torneo);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetTorneo", new { id = torneo.Id }, torneo);
+            catch (Exception ex)
+            {
+                return ApiResult<Torneo>.Fail(ex.Message);
+            }
         }
 
         // DELETE: api/Torneos/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteTorneo(int id)
+        public async Task<ActionResult<ApiResult<object>>> DeleteTorneo(int id)
         {
-            var torneo = await _context.Torneos.FindAsync(id);
-            if (torneo == null)
+            try
             {
-                return NotFound();
+                var torneo = await _context.Torneos.FindAsync(id);
+                if (torneo == null)
+                {
+                    return ApiResult<object>.Fail("Torneo no encontrado");
+                }
+
+                _context.Torneos.Remove(torneo);
+                await _context.SaveChangesAsync();
+
+                return ApiResult<object>.Ok(null);
             }
-
-            _context.Torneos.Remove(torneo);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return ApiResult<object>.Fail($"No se puede eliminar el torneo: {ex.Message}");
+            }
         }
 
         private bool TorneoExists(int id)

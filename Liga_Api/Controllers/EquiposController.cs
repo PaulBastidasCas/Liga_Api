@@ -23,33 +23,49 @@ namespace Liga_Api.Controllers
 
         // GET: api/Equipos
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Equipo>>> GetEquipo()
+        public async Task<ActionResult<ApiResult<List<Equipo>>>> GetEquipos()
         {
-            return await _context.Equipos.ToListAsync();
+            try
+            {
+                var equipos = await _context.Equipos.ToListAsync();
+                return ApiResult<List<Equipo>>.Ok(equipos);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<Equipo>>.Fail(ex.Message);
+            }
         }
 
         // GET: api/Equipos/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Equipo>> GetEquipo(int id)
+        public async Task<ActionResult<ApiResult<Equipo>>> GetEquipo(int id)
         {
-            var equipo = await _context.Equipos.FindAsync(id);
-
-            if (equipo == null)
+            try
             {
-                return NotFound();
-            }
+                var equipo = await _context.Equipos
+                    .Include(e => e.Jugadores) 
+                    .FirstOrDefaultAsync(m => m.Id == id);
 
-            return equipo;
+                if (equipo == null)
+                {
+                    return ApiResult<Equipo>.Fail("Equipo no encontrado");
+                }
+
+                return ApiResult<Equipo>.Ok(equipo);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<Equipo>.Fail(ex.Message);
+            }
         }
 
         // PUT: api/Equipos/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutEquipo(int id, Equipo equipo)
+        public async Task<ActionResult<ApiResult<Equipo>>> PutEquipo(int id, Equipo equipo)
         {
             if (id != equipo.Id)
             {
-                return BadRequest();
+                return ApiResult<Equipo>.Fail("El ID de la URL no coincide con el cuerpo de la petición");
             }
 
             _context.Entry(equipo).State = EntityState.Modified;
@@ -57,47 +73,63 @@ namespace Liga_Api.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                return ApiResult<Equipo>.Ok(null);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException ex)
             {
                 if (!EquipoExists(id))
                 {
-                    return NotFound();
+                    return ApiResult<Equipo>.Fail("Equipo no encontrado");
                 }
                 else
                 {
-                    throw;
+                    return ApiResult<Equipo>.Fail(ex.Message);
                 }
             }
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return ApiResult<Equipo>.Fail(ex.Message);
+            }
         }
 
         // POST: api/Equipos
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Equipo>> PostEquipo(Equipo equipo)
+        public async Task<ActionResult<ApiResult<Equipo>>> PostEquipo(Equipo equipo)
         {
-            _context.Equipos.Add(equipo);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.Equipos.Add(equipo);
+                await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetEquipo", new { id = equipo.Id }, equipo);
+                return CreatedAtAction("GetEquipo", new { id = equipo.Id }, ApiResult<Equipo>.Ok(equipo));
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<Equipo>.Fail(ex.Message);
+            }
         }
 
         // DELETE: api/Equipos/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteEquipo(int id)
+        public async Task<ActionResult<ApiResult<object>>> DeleteEquipo(int id)
         {
-            var equipo = await _context.Equipos.FindAsync(id);
-            if (equipo == null)
+            try
             {
-                return NotFound();
+                var equipo = await _context.Equipos.FindAsync(id);
+                if (equipo == null)
+                {
+                    return ApiResult<object>.Fail("Equipo no encontrado");
+                }
+
+                _context.Equipos.Remove(equipo);
+                await _context.SaveChangesAsync();
+
+                return ApiResult<object>.Ok(null);
             }
-
-            _context.Equipos.Remove(equipo);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return ApiResult<object>.Fail($"No se pudo eliminar: {ex.Message}");
+            }
         }
 
         private bool EquipoExists(int id)

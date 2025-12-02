@@ -10,7 +10,6 @@ using Liga_Modelos;
 
 namespace Liga_Api.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
     public class InscripcionesController : ControllerBase
     {
@@ -23,33 +22,84 @@ namespace Liga_Api.Controllers
 
         // GET: api/Inscripciones
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Inscripcion>>> GetInscripcion()
+        public async Task<ActionResult<ApiResult<List<Inscripcion>>>> GetInscripciones()
         {
-            return await _context.Inscripciones.ToListAsync();
+            try
+            {
+                var inscripciones = await _context.Inscripciones
+                    .Include(i => i.Torneo) 
+                    .Include(i => i.Equipo) 
+                    .ToListAsync();
+
+                return ApiResult<List<Inscripcion>>.Ok(inscripciones);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<Inscripcion>>.Fail(ex.Message);
+            }
         }
 
         // GET: api/Inscripciones/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Inscripcion>> GetInscripcion(int id)
+        public async Task<ActionResult<ApiResult<Inscripcion>>> GetInscripcion(int id)
         {
-            var inscripcion = await _context.Inscripciones.FindAsync(id);
-
-            if (inscripcion == null)
+            try
             {
-                return NotFound();
-            }
+                var inscripcion = await _context.Inscripciones
+                    .Include(i => i.Torneo)
+                    .Include(i => i.Equipo)
+                    .FirstOrDefaultAsync(m => m.Id == id);
 
-            return inscripcion;
+                if (inscripcion == null)
+                {
+                    return ApiResult<Inscripcion>.Fail("Inscripción no encontrada");
+                }
+
+                return ApiResult<Inscripcion>.Ok(inscripcion);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<Inscripcion>.Fail(ex.Message);
+            }
+        }
+
+        // POST: api/Inscripciones
+        [HttpPost]
+        public async Task<ActionResult<ApiResult<Inscripcion>>> PostInscripcion(Inscripcion inscripcion)
+        {
+            try
+            {
+                bool yaExiste = await _context.Inscripciones
+                    .AnyAsync(i => i.TorneoId == inscripcion.TorneoId && i.EquipoId == inscripcion.EquipoId);
+
+                if (yaExiste)
+                {
+                    return BadRequest(ApiResult<Inscripcion>.Fail("El equipo ya está inscrito en este torneo"));
+                }
+
+                _context.Inscripciones.Add(inscripcion);
+                await _context.SaveChangesAsync();
+
+                var inscripcionCompleta = await _context.Inscripciones
+                    .Include(i => i.Torneo)
+                    .Include(i => i.Equipo)
+                    .FirstOrDefaultAsync(i => i.Id == inscripcion.Id);
+
+                return CreatedAtAction("GetInscripcion", new { id = inscripcion.Id }, ApiResult<Inscripcion>.Ok(inscripcionCompleta));
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<Inscripcion>.Fail(ex.Message);
+            }
         }
 
         // PUT: api/Inscripciones/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutInscripcion(int id, Inscripcion inscripcion)
+        public async Task<ActionResult<ApiResult<Inscripcion>>> PutInscripcion(int id, Inscripcion inscripcion)
         {
             if (id != inscripcion.Id)
             {
-                return BadRequest();
+                return ApiResult<Inscripcion>.Fail("El ID de la URL no coincide con el cuerpo");
             }
 
             _context.Entry(inscripcion).State = EntityState.Modified;
@@ -57,47 +107,46 @@ namespace Liga_Api.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                return ApiResult<Inscripcion>.Ok(null);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException ex)
             {
                 if (!InscripcionExists(id))
                 {
-                    return NotFound();
+                    return ApiResult<Inscripcion>.Fail("Inscripción no encontrada");
                 }
                 else
                 {
-                    throw;
+                    return ApiResult<Inscripcion>.Fail(ex.Message);
                 }
             }
-
-            return NoContent();
-        }
-
-        // POST: api/Inscripciones
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<Inscripcion>> PostInscripcion(Inscripcion inscripcion)
-        {
-            _context.Inscripciones.Add(inscripcion);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetInscripcion", new { id = inscripcion.Id }, inscripcion);
+            catch (Exception ex)
+            {
+                return ApiResult<Inscripcion>.Fail(ex.Message);
+            }
         }
 
         // DELETE: api/Inscripciones/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteInscripcion(int id)
+        public async Task<ActionResult<ApiResult<object>>> DeleteInscripcion(int id)
         {
-            var inscripcion = await _context.Inscripciones.FindAsync(id);
-            if (inscripcion == null)
+            try
             {
-                return NotFound();
+                var inscripcion = await _context.Inscripciones.FindAsync(id);
+                if (inscripcion == null)
+                {
+                    return ApiResult<object>.Fail("Inscripción no encontrada");
+                }
+
+                _context.Inscripciones.Remove(inscripcion);
+                await _context.SaveChangesAsync();
+
+                return ApiResult<object>.Ok(null);
             }
-
-            _context.Inscripciones.Remove(inscripcion);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return ApiResult<object>.Fail(ex.Message);
+            }
         }
 
         private bool InscripcionExists(int id)

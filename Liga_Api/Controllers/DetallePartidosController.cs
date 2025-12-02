@@ -23,33 +23,75 @@ namespace Liga_Api.Controllers
 
         // GET: api/DetallePartidos
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<DetallePartido>>> GetDetallePartido()
+        public async Task<ActionResult<ApiResult<List<DetallePartido>>>> GetDetallePartidos()
         {
-            return await _context.DetallePartidos.ToListAsync();
+            try
+            {
+                var datos = await _context.DetallePartidos
+                    .Include(d => d.Jugador) 
+                    .Include(d => d.Partido)
+                    .ToListAsync();
+
+                return ApiResult<List<DetallePartido>>.Ok(datos);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<DetallePartido>>.Fail(ex.Message);
+            }
         }
 
         // GET: api/DetallePartidos/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<DetallePartido>> GetDetallePartido(int id)
+        public async Task<ActionResult<ApiResult<DetallePartido>>> GetDetallePartido(int id)
         {
-            var detallePartido = await _context.DetallePartidos.FindAsync(id);
-
-            if (detallePartido == null)
+            try
             {
-                return NotFound();
-            }
+                var detallePartido = await _context.DetallePartidos
+                    .Include(d => d.Jugador)
+                    .Include(d => d.Partido)
+                    .FirstOrDefaultAsync(m => m.Id == id);
 
-            return detallePartido;
+                if (detallePartido == null)
+                {
+                    return ApiResult<DetallePartido>.Fail("Detalle no encontrado");
+                }
+
+                return ApiResult<DetallePartido>.Ok(detallePartido);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<DetallePartido>.Fail(ex.Message);
+            }
+        }
+
+        // POST: api/DetallePartidos
+        [HttpPost]
+        public async Task<ActionResult<ApiResult<DetallePartido>>> PostDetallePartido(DetallePartido detallePartido)
+        {
+            try
+            {
+                _context.DetallePartidos.Add(detallePartido);
+                await _context.SaveChangesAsync();
+                var detalleCompleto = await _context.DetallePartidos
+                    .Include(d => d.Jugador)
+                    .Include(d => d.Partido)
+                    .FirstOrDefaultAsync(d => d.Id == detallePartido.Id);
+
+                return CreatedAtAction("GetDetallePartido", new { id = detallePartido.Id }, ApiResult<DetallePartido>.Ok(detalleCompleto));
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<DetallePartido>.Fail(ex.Message);
+            }
         }
 
         // PUT: api/DetallePartidos/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutDetallePartido(int id, DetallePartido detallePartido)
+        public async Task<ActionResult<ApiResult<DetallePartido>>> PutDetallePartido(int id, DetallePartido detallePartido)
         {
             if (id != detallePartido.Id)
             {
-                return BadRequest();
+                return ApiResult<DetallePartido>.Fail("El ID de la URL no coincide con el cuerpo de la petición");
             }
 
             _context.Entry(detallePartido).State = EntityState.Modified;
@@ -57,47 +99,46 @@ namespace Liga_Api.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                return ApiResult<DetallePartido>.Ok(null); 
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException ex)
             {
                 if (!DetallePartidoExists(id))
                 {
-                    return NotFound();
+                    return ApiResult<DetallePartido>.Fail("Detalle no encontrado");
                 }
                 else
                 {
-                    throw;
+                    return ApiResult<DetallePartido>.Fail(ex.Message);
                 }
             }
-
-            return NoContent();
-        }
-
-        // POST: api/DetallePartidos
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<DetallePartido>> PostDetallePartido(DetallePartido detallePartido)
-        {
-            _context.DetallePartidos.Add(detallePartido);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetDetallePartido", new { id = detallePartido.Id }, detallePartido);
+            catch (Exception ex)
+            {
+                return ApiResult<DetallePartido>.Fail(ex.Message);
+            }
         }
 
         // DELETE: api/DetallePartidos/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteDetallePartido(int id)
+        public async Task<ActionResult<ApiResult<DetallePartido>>> DeleteDetallePartido(int id)
         {
-            var detallePartido = await _context.DetallePartidos.FindAsync(id);
-            if (detallePartido == null)
+            try
             {
-                return NotFound();
+                var detallePartido = await _context.DetallePartidos.FindAsync(id);
+                if (detallePartido == null)
+                {
+                    return ApiResult<DetallePartido>.Fail("Detalle no encontrado");
+                }
+
+                _context.DetallePartidos.Remove(detallePartido);
+                await _context.SaveChangesAsync();
+
+                return ApiResult<DetallePartido>.Ok(null);
             }
-
-            _context.DetallePartidos.Remove(detallePartido);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return ApiResult<DetallePartido>.Fail(ex.Message);
+            }
         }
 
         private bool DetallePartidoExists(int id)

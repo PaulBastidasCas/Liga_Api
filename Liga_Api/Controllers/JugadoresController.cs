@@ -23,33 +23,73 @@ namespace Liga_Api.Controllers
 
         // GET: api/Jugadores
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Jugador>>> GetJugador()
+        public async Task<ActionResult<ApiResult<List<Jugador>>>> GetJugadores()
         {
-            return await _context.Jugadores.ToListAsync();
+            try
+            {
+                var jugadores = await _context.Jugadores
+                    .Include(j => j.Equipo) 
+                    .ToListAsync();
+
+                return ApiResult<List<Jugador>>.Ok(jugadores);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<List<Jugador>>.Fail(ex.Message);
+            }
         }
 
         // GET: api/Jugadores/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Jugador>> GetJugador(int id)
+        public async Task<ActionResult<ApiResult<Jugador>>> GetJugador(int id)
         {
-            var jugador = await _context.Jugadores.FindAsync(id);
-
-            if (jugador == null)
+            try
             {
-                return NotFound();
-            }
+                var jugador = await _context.Jugadores
+                    .Include(j => j.Equipo) 
+                    .FirstOrDefaultAsync(m => m.Id == id);
 
-            return jugador;
+                if (jugador == null)
+                {
+                    return ApiResult<Jugador>.Fail("Jugador no encontrado");
+                }
+
+                return ApiResult<Jugador>.Ok(jugador);
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<Jugador>.Fail(ex.Message);
+            }
+        }
+
+        // POST: api/Jugadores
+        [HttpPost]
+        public async Task<ActionResult<ApiResult<Jugador>>> PostJugador(Jugador jugador)
+        {
+            try
+            {
+                _context.Jugadores.Add(jugador);
+                await _context.SaveChangesAsync();
+
+                var jugadorCompleto = await _context.Jugadores
+                    .Include(j => j.Equipo)
+                    .FirstOrDefaultAsync(j => j.Id == jugador.Id);
+
+                return CreatedAtAction("GetJugador", new { id = jugador.Id }, ApiResult<Jugador>.Ok(jugadorCompleto));
+            }
+            catch (Exception ex)
+            {
+                return ApiResult<Jugador>.Fail(ex.Message);
+            }
         }
 
         // PUT: api/Jugadores/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutJugador(int id, Jugador jugador)
+        public async Task<ActionResult<ApiResult<Jugador>>> PutJugador(int id, Jugador jugador)
         {
             if (id != jugador.Id)
             {
-                return BadRequest();
+                return ApiResult<Jugador>.Fail("El ID de la URL no coincide con el cuerpo");
             }
 
             _context.Entry(jugador).State = EntityState.Modified;
@@ -57,47 +97,46 @@ namespace Liga_Api.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                return ApiResult<Jugador>.Ok(null);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException ex)
             {
                 if (!JugadorExists(id))
                 {
-                    return NotFound();
+                    return ApiResult<Jugador>.Fail("Jugador no encontrado");
                 }
                 else
                 {
-                    throw;
+                    return ApiResult<Jugador>.Fail(ex.Message);
                 }
             }
-
-            return NoContent();
-        }
-
-        // POST: api/Jugadores
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<Jugador>> PostJugador(Jugador jugador)
-        {
-            _context.Jugadores.Add(jugador);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetJugador", new { id = jugador.Id }, jugador);
+            catch (Exception ex)
+            {
+                return ApiResult<Jugador>.Fail(ex.Message);
+            }
         }
 
         // DELETE: api/Jugadores/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteJugador(int id)
+        public async Task<ActionResult<ApiResult<object>>> DeleteJugador(int id)
         {
-            var jugador = await _context.Jugadores.FindAsync(id);
-            if (jugador == null)
+            try
             {
-                return NotFound();
+                var jugador = await _context.Jugadores.FindAsync(id);
+                if (jugador == null)
+                {
+                    return ApiResult<object>.Fail("Jugador no encontrado");
+                }
+
+                _context.Jugadores.Remove(jugador);
+                await _context.SaveChangesAsync();
+
+                return ApiResult<object>.Ok(null);
             }
-
-            _context.Jugadores.Remove(jugador);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return ApiResult<object>.Fail(ex.Message);
+            }
         }
 
         private bool JugadorExists(int id)
