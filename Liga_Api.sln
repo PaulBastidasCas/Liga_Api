@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36616.10 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Liga_Api", "Liga_Api\Liga_Api.csproj", "{28D4061E-8587-4A85-9CED-AE3A3FF2AEE7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Liga_Modelos", "Liga_Modelos\Liga_Modelos.csproj", "{B7909F78-9926-429D-BC9D-95E5EFF2988E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{28D4061E-8587-4A85-9CED-AE3A3FF2AEE7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{28D4061E-8587-4A85-9CED-AE3A3FF2AEE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{28D4061E-8587-4A85-9CED-AE3A3FF2AEE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{28D4061E-8587-4A85-9CED-AE3A3FF2AEE7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B7909F78-9926-429D-BC9D-95E5EFF2988E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B7909F78-9926-429D-BC9D-95E5EFF2988E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B7909F78-9926-429D-BC9D-95E5EFF2988E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B7909F78-9926-429D-BC9D-95E5EFF2988E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FB539D66-E943-4CDE-98C1-255950F32191}
+	EndGlobalSection
+EndGlobal
