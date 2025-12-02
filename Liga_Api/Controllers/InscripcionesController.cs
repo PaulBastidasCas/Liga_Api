@@ -10,6 +10,7 @@ using Liga_Modelos;
 
 namespace Liga_Api.Controllers
 {
+    [Route("api/[controller]")]
     [ApiController]
     public class InscripcionesController : ControllerBase
     {
@@ -21,14 +22,14 @@ namespace Liga_Api.Controllers
         }
 
         // GET: api/Inscripciones
-        [HttpGet]
+        [HttpGet] 
         public async Task<ActionResult<ApiResult<List<Inscripcion>>>> GetInscripciones()
         {
             try
             {
                 var inscripciones = await _context.Inscripciones
-                    .Include(i => i.Torneo) 
-                    .Include(i => i.Equipo) 
+                    .Include(i => i.Torneo)
+                    .Include(i => i.Equipo)
                     .ToListAsync();
 
                 return ApiResult<List<Inscripcion>>.Ok(inscripciones);
